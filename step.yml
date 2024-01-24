@@ -68,24 +68,48 @@ toolkit:
 
 
 inputs:
-  - example_step_input: Default Value - you can leave this empty if you want to
+  - tags:
     opts:
-      title: "Example Step Input"
-      summary: Summary. No more than 2-3 sentences.
-      description: |
-        Description of this input.
-
-        Can be Markdown formatted text.
-      is_expand: true
+      title: Image tags
+      summary: List of tags (full image names) to be applied to the built image
+      description: |-
+        List of tags (full image names) to be applied to the built image
+        
+        Add one tag per line. Example: `myregistry.com/myimage:latest`
       is_required: true
-      value_options: []
 
-outputs:
-  - EXAMPLE_STEP_OUTPUT:
+  - push: "false"
     opts:
-      title: "Example Step Output"
-      summary: Summary. No more than 2-3 sentences.
-      description: |
-        Description of this output.
+      title: Push docker image
+      summary: When set to 'true', the docker image will be pushed
+      description: |-
+        When set to 'true', the docker image will be pushed.
+      value_options:
+        - "true"
+        - "false"
 
-        Can be Markdown formatted text.
+  - use_bitrise_cache: "false"
+    opts:
+      title: Use Bitrise key-value cache
+      summary: When set to 'true', the docker image will automatically be cached using Bitrise key-value cache
+      description: |-
+        When set to 'true', the docker image will automatically be cached using Bitrise key-value cache.
+        
+        The following cache keys will be used:
+        - docker-imagename-{{ .OS }}-{{ .Arch }}-{{ .Branch }}-{{ .CommitHash }}
+        - docker-imagename-{{ .OS }}-{{ .Arch }}-{{ .Branch }}
+        - docker-imagename-{{ .OS }}-{{ .Arch }}
+        
+        Warning: Do not specify the cache-to and cache-from parameters when using this option.
+      value_options:
+        - "true"
+        - "false"
+
+  - verbose: "false"
+    opts:
+      title: Verbose logging
+      summary: Enable logging additional information for troubleshooting
+      is_required: true
+      value_options:
+        - "true"
+        - "false"
