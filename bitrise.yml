@@ -11,8 +11,36 @@ app:
   - BITRISE_STEP_GIT_CLONE_URL: https://github.com/bitrise-steplib/bitrise-step-docker-build-push.git
   - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
 
+  # Shared secrets for testing, use a .bitrise.secrets.yml file to define these locally
+  - BITRISEIO_CACHE_SERVICE_URL: $BITRISEIO_CACHE_SERVICE_URL
+  - CACHE_API_CLIENT_SECRET: $CACHE_API_CLIENT_SECRET
+
 workflows:
+  _generate_api_token:
+    steps:
+      - script:
+          title: Generate API access token
+          description: Generate an expiring API token using $API_CLIENT_SECRET
+          inputs:
+            - content: |
+                #!/bin/env bash
+                set -e
+                
+                json_response=$(curl --fail -X POST https://auth.services.bitrise.io/auth/realms/bitrise-services/protocol/openid-connect/token -k \
+                    --data "client_id=bitrise-steps" \
+                    --data "client_secret=$CACHE_API_CLIENT_SECRET" \
+                    --data "grant_type=urn:ietf:params:oauth:grant-type:uma-ticket" \
+                    --data "claim_token=eyJhcHBfaWQiOlsiY2FjaGUtc3RlcHMtdGVzdHMiXSwgIm9yZ19pZCI6WyJ0ZXN0LW9yZy1pZCJdLCAiYWJjc19hY2Nlc3NfZ3JhbnRlZCI6WyJ0cnVlIl19" \
+                    --data "claim_token_format=urn:ietf:params:oauth:token-type:jwt" \
+                    --data "audience=bitrise-services")
+                
+                auth_token=$(echo $json_response | jq -r .access_token)
+                
+                envman add --key BITRISEIO_ABCS_API_URL --value $BITRISEIO_CACHE_SERVICE_URL
+                envman add --key BITRISEIO_BITRISE_SERVICES_ACCESS_TOKEN --value $auth_token --sensitive
   test:
+    before_run:
+    - _generate_api_token
     steps:
     - script:
         inputs:
@@ -43,6 +71,7 @@ workflows:
         - tags: |-
             myregistry.com/myimage:latest
             myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
+        - use_bitrise_cache: "true"
     - script:
         inputs:
         - content: |
