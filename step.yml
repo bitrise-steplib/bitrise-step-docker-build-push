@@ -8,11 +8,12 @@
 # - Bitrise CLI guides: http://devcenter.bitrise.io/bitrise-cli/
 
 title: |-
-  docker-build-push
+  Docker Build & Push
 summary: |
   Building and pushing docker images with built-in cache support
 description: |
-  Building and pushing docker images with built-in cache support
+  Enables you to build and optionally push docker images with built-in Bitrise key-value cache support.
+  It is possible to customize the docker build command to utilize other cache mechanisms, such as registry-cache.
 website: https://github.com/bitrise-steplib/bitrise-step-docker-build-push
 source_code_url: https://github.com/bitrise-steplib/bitrise-step-docker-build-push
 support_url: https://github.com/bitrise-steplib/bitrise-step-docker-build-push/issues
