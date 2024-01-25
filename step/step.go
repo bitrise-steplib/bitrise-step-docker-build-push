@@ -57,7 +57,7 @@ func New(
 func (step DockerBuildPushStep) Run() error {
 	var input Input
 	if err := step.inputParser.Parse(&input); err != nil {
-		return fmt.Errorf("failed to parse inputs: %w", err)
+		return fmt.Errorf("parse inputs: %w", err)
 	}
 	stepconf.Print(input)
 	step.logger.Println()
@@ -69,17 +69,17 @@ func (step DockerBuildPushStep) Run() error {
 
 	if input.UseBitriseCache {
 		if err := step.restoreCache(input, tagUsedInCacheKey); err != nil {
-			return fmt.Errorf("failed to restore cache: %w", err)
+			return fmt.Errorf("restore cache: %w", err)
 		}
 	}
 
-	if err := step.dockerBuild(input); err != nil {
-		return fmt.Errorf("failed to build docker image: %w", err)
+	if err := step.dockerBuild(input, tagUsedInCacheKey); err != nil {
+		return fmt.Errorf("build docker image: %w", err)
 	}
 
 	if input.UseBitriseCache {
 		if err := step.saveCache(input, tagUsedInCacheKey); err != nil {
-			return fmt.Errorf("failed to save cache: %w", err)
+			return fmt.Errorf("save cache: %w", err)
 		}
 	}
 	return nil
@@ -102,29 +102,6 @@ func (step DockerBuildPushStep) restoreCache(input Input, imageName string) erro
 	})
 }
 
-func (step DockerBuildPushStep) dockerBuild(input Input) error {
-	step.logger.Infof("Building docker image...")
-	//cmd := step.commandFactory.Create("docker", []string{"build", "TODO"}, nil)
-	//out, err := cmd.RunAndReturnTrimmedCombinedOutput()
-	//if err != nil {
-	//	return fmt.Errorf("failed to build docker image %s: %w", out, err)
-	//}
-
-	cmd := step.commandFactory.Create("mkdir", []string{"-p", dockerCacheFolder}, nil)
-	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create cache folder %s: %w", out, err)
-	}
-
-	cmd = step.commandFactory.Create("touch", []string{fmt.Sprintf("%s/kutyacica.fake", dockerCacheFolder)}, nil)
-	out, err = cmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to create cache folder %s: %w", out, err)
-	}
-
-	return nil
-}
-
 func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 	step.logger.Infof("Saving cache...")
 	saver := cache.NewSaver(step.envRepo, step.logger, step.pathProvider, step.pathModifier, step.pathChecker)
@@ -136,4 +113,86 @@ func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 		Paths:       []string{dockerCacheFolder},
 		IsKeyUnique: false,
 	})
+}
+
+func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error {
+	step.logger.Infof("Building docker image...")
+
+	if err := step.createCacheFolder(dockerCacheFolder); err != nil {
+		return fmt.Errorf("create cache folder: %w", err)
+	}
+	if err := step.createCacheFolder(fmt.Sprintf("%s-new", dockerCacheFolder)); err != nil {
+		return fmt.Errorf("create cache folder: %w", err)
+	}
+	if err := step.initializeBuildkit(); err != nil {
+		return fmt.Errorf("initialize buildkit: %w", err)
+	}
+	if err := step.build(input, imageName); err != nil {
+		return fmt.Errorf("build docker image: %w", err)
+	}
+	if err := step.moveCacheFolder(); err != nil {
+		return fmt.Errorf("move cache folder: %w", err)
+	}
+
+	return nil
+}
+
+func (step DockerBuildPushStep) build(input Input, imageName string) error {
+	buildxCmd := step.commandFactory.Create("docker", []string{
+		"buildx",
+		"build",
+		"--build-arg",
+		// envs like BUNDLE_GEMS__CONTRIBSYS__COM=$BUNDLE_GEMS__CONTRIBSYS__COM ?
+		"--cache-from=type=local,src=/tmp/.buildx-cache",
+		"--cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max,compression=zstd",
+		"-t",
+		imageName,
+		".", // support for dockerfile path?
+	}, nil)
+	buildxOut, buildxErr := buildxCmd.RunAndReturnTrimmedCombinedOutput()
+	if buildxErr != nil {
+		return fmt.Errorf("build docker image with buildx %s: %w", buildxOut, buildxErr)
+	}
+	step.logger.Infof(buildxOut)
+	return nil
+}
+
+func (step DockerBuildPushStep) initializeBuildkit() error {
+	createCmd := step.commandFactory.Create("docker", []string{
+		"buildx",
+		"create",
+		"--use",
+	}, nil)
+	createOut, createErr := createCmd.RunAndReturnTrimmedCombinedOutput()
+	if createErr != nil {
+		return fmt.Errorf("create buildx instance %s: %w", createOut, createErr)
+	}
+	step.logger.Infof(createOut)
+	return nil
+}
+
+func (step DockerBuildPushStep) createCacheFolder(path string) error {
+	cmd := step.commandFactory.Create("mkdir", []string{"-p", path}, nil)
+	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return fmt.Errorf("create cache folder %s: %w", out, err)
+	}
+
+	return nil
+}
+
+func (step DockerBuildPushStep) moveCacheFolder() error {
+	cmd := step.commandFactory.Create("rm", []string{"-rf", dockerCacheFolder}, nil)
+	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return fmt.Errorf("remove cache folder %s: %w", out, err)
+	}
+
+	cmd = step.commandFactory.Create("mv", []string{fmt.Sprintf("%s-new", dockerCacheFolder), dockerCacheFolder}, nil)
+	_, err = cmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return fmt.Errorf("move cache folder: %w", err)
+	}
+
+	return nil
 }
