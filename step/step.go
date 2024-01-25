@@ -74,8 +74,7 @@ func (step DockerBuildPushStep) Run() error {
 
 	step.logger.EnableDebugLog(input.Verbose)
 
-	tags := strings.Split(input.Tags, "\n")
-	tagUsedInCacheKey := tags[0]
+	tagUsedInCacheKey := strings.Split(input.Tags, "\n")[0]
 
 	if input.UseBitriseCache {
 		if err := step.restoreCache(input, tagUsedInCacheKey); err != nil {
@@ -83,7 +82,7 @@ func (step DockerBuildPushStep) Run() error {
 		}
 	}
 
-	if err := step.dockerBuild(input, tagUsedInCacheKey); err != nil {
+	if err := step.dockerBuild(input); err != nil {
 		return fmt.Errorf("build docker image: %w", err)
 	}
 
@@ -125,7 +124,7 @@ func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 	})
 }
 
-func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error {
+func (step DockerBuildPushStep) dockerBuild(input Input) error {
 	step.logger.Infof("Building docker image...")
 
 	if err := step.createCacheFolder(dockerCacheFolder); err != nil {
@@ -145,7 +144,7 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 		}
 	}()
 
-	if err := step.build(input, imageName); err != nil {
+	if err := step.build(input); err != nil {
 		return fmt.Errorf("build docker image: %w", err)
 	}
 	if err := step.moveCacheFolder(); err != nil {
@@ -167,7 +166,7 @@ func (step DockerBuildPushStep) destroyContainer(container string) error {
 	return nil
 }
 
-func (step DockerBuildPushStep) build(input Input, imageName string) error {
+func (step DockerBuildPushStep) build(input Input) error {
 	stdout := NewLoggerWriter(step.logger)
 	defer stdout.Flush()
 
@@ -223,7 +222,11 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 		args = append(args, "--load")
 	}
 
-	args = append(args, []string{"-t", imageName, "-f", input.File, input.Context}...)
+	for _, tag := range strings.Split(input.Tags, "\n") {
+		args = append(args, "--tag", tag)
+	}
+
+	args = append(args, []string{"-f", input.File, input.Context}...)
 
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))
 

@@ -27,7 +27,7 @@ workflows:
         - file: tests/Dockerfile.alpine
         - tags: |-
             myregistry.com/myimage:bitrise-cache
-            myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
+            myregistry.com/myimage:$BITRISE_GIT_BRANCH-$BITRISE_GIT_COMMIT
         - use_bitrise_cache: "true"
 
   test_advanced_build:
@@ -40,7 +40,7 @@ workflows:
             - file: tests/Dockerfile.alpine
             - tags: |-
                 myregistry.com/myimage:advanced-build
-                myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
+                myregistry.com/myimage:$BITRISE_GIT_BRANCH-$BITRISE_GIT_COMMIT
             - cache_from: |-
                 type=local,src=/tmp/advanced-build
                 type=local,src=/tmp/advanced-build-secondary
