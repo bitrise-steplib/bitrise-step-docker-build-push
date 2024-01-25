@@ -37,8 +37,9 @@ type DockerBuildPushStep struct {
 }
 
 const (
-	dockerCacheKeyTemplate = "docker-%s-{{ .OS }}-{{ .Arch }}-{{ .Branch }}-{{ .CommitHash }}"
-	dockerCacheFolder      = "/tmp/.buildx-cache"
+	dockerCacheKeyTemplate     = "docker-%s-{{ .OS }}-{{ .Arch }}-{{ .Branch }}-{{ .CommitHash }}"
+	dockerCacheFolder          = "/tmp/.buildx-cache"
+	dockerCacheFolderTemporary = "/tmp/.buildx-cache-new"
 )
 
 func New(
@@ -128,7 +129,7 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 	if err := step.createCacheFolder(dockerCacheFolder); err != nil {
 		return fmt.Errorf("create cache folder: %w", err)
 	}
-	if err := step.createCacheFolder(fmt.Sprintf("%s-new", dockerCacheFolder)); err != nil {
+	if err := step.createCacheFolder(dockerCacheFolderTemporary); err != nil {
 		return fmt.Errorf("create cache folder: %w", err)
 	}
 	if err := step.initializeBuildkit(); err != nil {
@@ -162,7 +163,7 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 	switch {
 	case input.UseBitriseCache:
 		args = append(args, fmt.Sprintf("--cache-from=type=local,src=%s", dockerCacheFolder))
-		args = append(args, fmt.Sprintf("--cache-to=type=local,dest=%s-new,mode=max,compression=zstd", dockerCacheFolder))
+		args = append(args, fmt.Sprintf("--cache-to=type=local,dest=%s,mode=max,compression=zstd", dockerCacheFolderTemporary))
 	case input.CacheFrom != "":
 		for _, cacheFrom := range strings.Split(input.CacheFrom, "\n") {
 			args = append(args, fmt.Sprintf("--cache-from=%s", cacheFrom))
@@ -252,7 +253,7 @@ func (step DockerBuildPushStep) moveCacheFolder() error {
 		return fmt.Errorf("remove cache folder %s: %w", out, err)
 	}
 
-	cmd = step.commandFactory.Create("mv", []string{fmt.Sprintf("%s-new", dockerCacheFolder), dockerCacheFolder}, nil)
+	cmd = step.commandFactory.Create("mv", []string{dockerCacheFolderTemporary, dockerCacheFolder}, nil)
 	_, err = cmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return fmt.Errorf("move cache folder: %w", err)
