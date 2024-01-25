@@ -162,6 +162,10 @@ inputs:
       description: |-
         List of extra options to be passed to the docker build
         
+        Extra options must be in the format of --option=value
+        Having a space between the option and the value will work only if there are no spaces in the value
+        For example this will not work: --option "value with spaces", but this will: --option="value with spaces"
+        
         Add one extra option per line. Example: `--target=build`
       is_required: false
 

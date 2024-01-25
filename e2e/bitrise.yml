@@ -10,7 +10,6 @@ app:
 workflows:
   test_simple_build:
     before_run:
-      - _fake_github_envs
       - _generate_api_token
     steps:
       - path::./:
@@ -18,7 +17,7 @@ workflows:
           inputs:
             - file: tests/Dockerfile.alpine
             - tags: myregistry.com/myimage:simple-build
-  test_bitrise_cache:
+  test_with_bitrise_cache:
     before_run:
     - _fake_github_envs
     - _generate_api_token
@@ -31,17 +30,31 @@ workflows:
             myregistry.com/myimage:bitrise-cache
             myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
         - use_bitrise_cache: "true"
-  test_build_target:
+  test_advanced_build:
     before_run:
       - _fake_github_envs
-      - _generate_api_token
     steps:
       - path::./:
           title: Build image with Bitrise Cache
           inputs:
             - file: tests/Dockerfile.alpine
-            - tags: myregistry.com/myimage:build-target
-            - extra_options: --target=build
+            - tags: |-
+                myregistry.com/myimage:advanced-build
+                myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
+            - cache_from: |-
+                type=local,src=/tmp/advanced-build
+                type=local,src=/tmp/advanced-build-secondary
+            - cache_to: |-
+                type=local,dest=/tmp/advanced-build,mode=max,compression=zstd
+                type=local,dest=/tmp/advanced-build-secondary,mode=max,compression=zstd
+            - build_arg: |-
+                VERSION=1.0.0
+                TEST=kutya
+            - extra_options: |-
+                --target=build
+                --build-arg="ALMA=CICA KUTYA"
+                --platform=linux/amd64
+                --label="com.example.version=0.0.1-beta"
   _generate_api_token:
     steps:
     - script:

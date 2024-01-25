@@ -2,7 +2,6 @@ package step
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/cache"
@@ -132,9 +131,17 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 	if err := step.createCacheFolder(dockerCacheFolderTemporary); err != nil {
 		return fmt.Errorf("create cache folder: %w", err)
 	}
-	if err := step.initializeBuildkit(); err != nil {
+
+	buildkitContainer, err := step.initializeBuildkit()
+	if err != nil {
 		return fmt.Errorf("initialize buildkit: %w", err)
 	}
+	defer func() {
+		if err := step.destroyContainer(buildkitContainer); err != nil {
+			step.logger.Errorf("destroy buildx instance: %s", err)
+		}
+	}()
+
 	if err := step.build(input, imageName); err != nil {
 		return fmt.Errorf("build docker image: %w", err)
 	}
@@ -142,6 +149,18 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 		return fmt.Errorf("move cache folder: %w", err)
 	}
 
+	return nil
+}
+
+func (step DockerBuildPushStep) destroyContainer(container string) error {
+	args := []string{
+		"buildx", "rm", "--force", container,
+	}
+	cmd := step.commandFactory.Create("docker", args, nil)
+	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return fmt.Errorf("remove buildx instance %s: %w", out, err)
+	}
 	return nil
 }
 
@@ -175,19 +194,12 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 		}
 	}
 
+	// Extra options must be in the format of --option=value
+	// Having a space between the option and the value will work only if there are no spaces in the value
+	// For example this will not work: --option "value with spaces", but this will: --option="value with spaces"
 	if input.ExtraOptions != "" {
 		for _, option := range strings.Split(input.ExtraOptions, "\n") {
-			// This regex splits the string by spaces, but keeps quoted strings together
-			r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
-			result := r.FindAllString(option, -1)
-
-			// Remove quotes from the strings
-			var options []string
-			for _, result := range result {
-				options = append(options, strings.ReplaceAll(result, "\"", ""))
-			}
-
-			args = append(args, options...)
+			args = append(args, option)
 		}
 	}
 
@@ -215,25 +227,19 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 	return nil
 }
 
-func (step DockerBuildPushStep) initializeBuildkit() error {
-	stdout := NewLoggerWriter(step.logger)
-	defer stdout.Flush()
-
+func (step DockerBuildPushStep) initializeBuildkit() (string, error) {
 	args := []string{
 		"buildx", "create", "--use",
 	}
-	createCmd := step.commandFactory.Create("docker", args, &command.Opts{
-		Stdout: stdout,
-		Stderr: stdout,
-	})
+	createCmd := step.commandFactory.Create("docker", args, nil)
 
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))
 
-	err := createCmd.Run()
+	out, err := createCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
-		return fmt.Errorf("create buildx instance: %w", err)
+		return "", fmt.Errorf("create buildx instance: %w", err)
 	}
-	return nil
+	return out, nil
 }
 
 func (step DockerBuildPushStep) createCacheFolder(path string) error {
