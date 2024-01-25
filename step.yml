@@ -78,6 +78,26 @@ inputs:
         Add one tag per line. Example: `myregistry.com/myimage:latest`
       is_required: true
 
+  - context: "."
+    opts:
+      title: Build context path
+      summary: Path to the build context to be used for the docker build
+      description: |-
+        Path to the build context to be used for the docker build
+        
+        The path is relative to the working directory.
+      is_required: true
+
+  - file: "./Dockerfile"
+    opts:
+      title: Dockerfile path
+      summary: Path to the Dockerfile to be built
+      description: |-
+        Path to the Dockerfile to be built
+        
+        The path is relative to the working directory.
+      is_required: true
+
   - push: "false"
     opts:
       title: Push docker image
@@ -87,6 +107,7 @@ inputs:
       value_options:
         - "true"
         - "false"
+      is_required: true
 
   - use_bitrise_cache: "false"
     opts:
@@ -104,6 +125,47 @@ inputs:
       value_options:
         - "true"
         - "false"
+      is_required: true
+
+  - build_arg:
+    opts:
+      title: Build arguments
+      summary: List of build arguments to be passed to the docker build
+      description: |-
+        List of build arguments to be passed to the docker build
+        
+        Add one build argument per line. Example: `MY_BUILD_ARG=myvalue`
+      is_required: false
+
+  - cache_from:
+    opts:
+      title: Cache from arguments
+      summary: List of arguments to be passed to the docker build for cache-from
+      description: |-
+        List of arguments to be passed to the docker build for cache-from
+        
+        Add one cache-from argument per line. Example: `type=registry,ref=myregistry.dev/myrepository/my-image:latest`
+      is_required: false
+
+  - cache_to:
+    opts:
+      title: Cache to arguments
+      summary: List of arguments to be passed to the docker build for cache-to
+      description: |-
+        List of arguments to be passed to the docker build for cache-to
+        
+        Add one cache-to argument per line. Example: `type=registry,ref=myregistry.dev/myrepository/my-image:latest,mode=max,compression=zstd`
+      is_required: false
+
+  - extra_options:
+    opts:
+      title: Extra options
+      summary: List of extra options to be passed to the docker build
+      description: |-
+        List of extra options to be passed to the docker build
+        
+        Add one extra option per line. Example: `--target=build`
+      is_required: false
 
   - verbose: "false"
     opts:

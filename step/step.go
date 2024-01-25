@@ -2,6 +2,7 @@ package step
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/cache"
@@ -14,9 +15,15 @@ import (
 
 type Input struct {
 	Tags            string `env:"tags,required"`
-	UseBitriseCache bool   `env:"use_bitrise_cache"`
-	Push            bool   `env:"push"`
+	UseBitriseCache bool   `env:"use_bitrise_cache,required"`
+	Push            bool   `env:"push,required"`
 	Verbose         bool   `env:"verbose,required"`
+	File            string `env:"file,required"`
+	Context         string `env:"context,required"`
+	BuildArg        string `env:"build_arg"`
+	CacheFrom       string `env:"cache_from"`
+	CacheTo         string `env:"cache_to"`
+	ExtraOptions    string `env:"extra_options"`
 }
 
 type DockerBuildPushStep struct {
@@ -141,17 +148,57 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 	stdout := NewLoggerWriter(step.logger)
 	defer stdout.Flush()
 
-	buildxCmd := step.commandFactory.Create("docker", []string{
+	args := []string{
 		"buildx",
 		"build",
-		"--build-arg",
-		// envs like BUNDLE_GEMS__CONTRIBSYS__COM=$BUNDLE_GEMS__CONTRIBSYS__COM ?
-		"--cache-from=type=local,src=/tmp/.buildx-cache",
-		"--cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max,compression=zstd",
-		"-t",
-		imageName,
-		".", // support for dockerfile path?
-	}, &command.Opts{
+	}
+
+	if input.BuildArg != "" {
+		for _, arg := range strings.Split(input.BuildArg, "\n") {
+			args = append(args, "--build-arg", arg)
+		}
+	}
+
+	switch {
+	case input.UseBitriseCache:
+		args = append(args, fmt.Sprintf("--cache-from=type=local,src=%s", dockerCacheFolder))
+		args = append(args, fmt.Sprintf("--cache-to=type=local,dest=%s-new,mode=max,compression=zstd", dockerCacheFolder))
+	case input.CacheFrom != "":
+		for _, cacheFrom := range strings.Split(input.CacheFrom, "\n") {
+			args = append(args, fmt.Sprintf("--cache-from=%s", cacheFrom))
+		}
+		fallthrough
+	case input.CacheTo != "":
+		for _, cacheTo := range strings.Split(input.CacheTo, "\n") {
+			args = append(args, fmt.Sprintf("--cache-to=%s", cacheTo))
+		}
+	}
+
+	if input.ExtraOptions != "" {
+		for _, option := range strings.Split(input.ExtraOptions, "\n") {
+			// This regex splits the string by spaces, but keeps quoted strings together
+			r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+			result := r.FindAllString(option, -1)
+
+			// Remove quotes from the strings
+			var options []string
+			for _, result := range result {
+				options = append(options, strings.ReplaceAll(result, "\"", ""))
+			}
+
+			args = append(args, options...)
+		}
+	}
+
+	if input.Push {
+		args = append(args, "--push")
+	}
+
+	args = append(args, []string{"-t", imageName, "-f", input.File, input.Context}...)
+
+	step.logger.Infof("$ docker %s", strings.Join(args, " "))
+
+	buildxCmd := step.commandFactory.Create("docker", args, &command.Opts{
 		Stdout: stdout,
 		Stderr: stdout,
 	})
@@ -168,14 +215,16 @@ func (step DockerBuildPushStep) initializeBuildkit() error {
 	stdout := NewLoggerWriter(step.logger)
 	defer stdout.Flush()
 
-	createCmd := step.commandFactory.Create("docker", []string{
-		"buildx",
-		"create",
-		"--use",
-	}, &command.Opts{
+	args := []string{
+		"buildx", "create", "--use",
+	}
+	createCmd := step.commandFactory.Create("docker", args, &command.Opts{
 		Stdout: stdout,
 		Stderr: stdout,
 	})
+
+	step.logger.Infof("$ docker %s", strings.Join(args, " "))
+
 	err := createCmd.Run()
 	if err != nil {
 		return fmt.Errorf("create buildx instance: %w", err)

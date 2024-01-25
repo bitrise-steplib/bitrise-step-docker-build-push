@@ -16,21 +16,21 @@ func NewLoggerWriter(logger log.Logger) *LogWriter {
 	}
 }
 
-func (cw *LogWriter) Write(p []byte) (n int, err error) {
+func (lw *LogWriter) Write(p []byte) (n int, err error) {
 	for index := range p {
-		if (p[index] == '\n' || p[index] == '\r') && len(cw.buffer) > 0 {
-			cw.logger.Infof(string(cw.buffer))
-			cw.buffer = nil
+		if (p[index] == '\n' || p[index] == '\r') && len(lw.buffer) > 0 {
+			lw.logger.Infof(string(lw.buffer))
+			lw.buffer = nil
 		} else {
-			cw.buffer = append(cw.buffer, p[index])
+			lw.buffer = append(lw.buffer, p[index])
 		}
 	}
 	return len(p), nil
 }
 
-func (cw *LogWriter) Flush() {
-	if len(cw.buffer) > 0 {
-		cw.logger.Infof(string(cw.buffer))
-		cw.buffer = nil
+func (lw *LogWriter) Flush() {
+	if len(lw.buffer) > 0 {
+		lw.logger.Infof(string(lw.buffer))
+		lw.buffer = nil
 	}
 }
