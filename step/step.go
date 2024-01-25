@@ -138,6 +138,7 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 }
 
 func (step DockerBuildPushStep) build(input Input, imageName string) error {
+	stdout := NewChannelWriter(256, step.logger)
 	buildxCmd := step.commandFactory.Create("docker", []string{
 		"buildx",
 		"build",
@@ -148,26 +149,33 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 		"-t",
 		imageName,
 		".", // support for dockerfile path?
-	}, nil)
-	buildxOut, buildxErr := buildxCmd.RunAndReturnTrimmedCombinedOutput()
-	if buildxErr != nil {
-		return fmt.Errorf("build docker image with buildx %s: %w", buildxOut, buildxErr)
+	}, &command.Opts{
+		Stdout: stdout,
+		Stderr: stdout,
+	})
+
+	err := buildxCmd.Run()
+	if err != nil {
+		return fmt.Errorf("build docker image with buildx: %w", err)
 	}
-	step.logger.Infof(buildxOut)
+
 	return nil
 }
 
 func (step DockerBuildPushStep) initializeBuildkit() error {
+	stdout := NewChannelWriter(256, step.logger)
 	createCmd := step.commandFactory.Create("docker", []string{
 		"buildx",
 		"create",
 		"--use",
-	}, nil)
-	createOut, createErr := createCmd.RunAndReturnTrimmedCombinedOutput()
-	if createErr != nil {
-		return fmt.Errorf("create buildx instance %s: %w", createOut, createErr)
+	}, &command.Opts{
+		Stdout: stdout,
+		Stderr: stdout,
+	})
+	err := createCmd.Run()
+	if err != nil {
+		return fmt.Errorf("create buildx instance: %w", err)
 	}
-	step.logger.Infof(createOut)
 	return nil
 }
 
