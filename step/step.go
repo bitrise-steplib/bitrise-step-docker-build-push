@@ -14,16 +14,18 @@ import (
 )
 
 type Input struct {
-	Tags            string `env:"tags,required"`
-	UseBitriseCache bool   `env:"use_bitrise_cache,required"`
-	Push            bool   `env:"push,required"`
-	Verbose         bool   `env:"verbose,required"`
-	File            string `env:"file,required"`
-	Context         string `env:"context,required"`
-	BuildArg        string `env:"build_arg"`
-	CacheFrom       string `env:"cache_from"`
-	CacheTo         string `env:"cache_to"`
-	ExtraOptions    string `env:"extra_options"`
+	UseBitriseCache   bool `env:"use_bitrise_cache,required"`
+	Push              bool `env:"push,required"`
+	Verbose           bool `env:"verbose,required"`
+	BuildxHostNetwork bool `env:"buildx_host_network,required"`
+
+	Tags         string `env:"tags,required"`
+	File         string `env:"file,required"`
+	Context      string `env:"context,required"`
+	BuildArg     string `env:"build_arg"`
+	CacheFrom    string `env:"cache_from"`
+	CacheTo      string `env:"cache_to"`
+	ExtraOptions string `env:"extra_options"`
 }
 
 type DockerBuildPushStep struct {
@@ -133,7 +135,7 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 		return fmt.Errorf("create cache folder: %w", err)
 	}
 
-	buildkitContainer, err := step.initializeBuildkit()
+	buildkitContainer, err := step.initializeBuildkit(input)
 	if err != nil {
 		return fmt.Errorf("initialize buildkit: %w", err)
 	}
@@ -214,12 +216,14 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 
 	if input.Push {
 		args = append(args, "--push")
+	} else {
+		// The --load parameter is used to load the image into the local docker daemon
+		// This is needed because the docker buildx build command will keep the result in cache only,
+		// preventing the use of the image in the same build
+		args = append(args, "--load")
 	}
 
-	// The --load parameter is used to load the image into the local docker daemon
-	// This is needed because the docker buildx build command will keep the result in cache only,
-	// preventing the use of the image in the same build
-	args = append(args, []string{"--load", "-t", imageName, "-f", input.File, input.Context}...)
+	args = append(args, []string{"-t", imageName, "-f", input.File, input.Context}...)
 
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))
 
@@ -236,10 +240,15 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 	return nil
 }
 
-func (step DockerBuildPushStep) initializeBuildkit() (string, error) {
+func (step DockerBuildPushStep) initializeBuildkit(input Input) (string, error) {
 	args := []string{
 		"buildx", "create", "--use",
 	}
+
+	if input.BuildxHostNetwork {
+		args = append(args, "--driver-opt", "network=host", "--buildkitd-flags", "--allow-insecure-entitlement network.host")
+	}
+
 	createCmd := step.commandFactory.Create("docker", args, nil)
 
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))

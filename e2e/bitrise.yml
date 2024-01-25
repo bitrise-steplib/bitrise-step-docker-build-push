@@ -9,14 +9,13 @@ app:
 
 workflows:
   test_simple_build:
-    before_run:
-      - _generate_api_token
     steps:
       - path::./:
           title: Build a simple image - no cache
           inputs:
             - file: tests/Dockerfile.alpine
             - tags: myregistry.com/myimage:simple-build
+
   test_with_bitrise_cache:
     before_run:
     - _fake_github_envs
@@ -30,9 +29,10 @@ workflows:
             myregistry.com/myimage:bitrise-cache
             myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
         - use_bitrise_cache: "true"
+
   test_advanced_build:
     before_run:
-      - _fake_github_envs
+    - _fake_github_envs
     steps:
       - path::./:
           title: Build image with Bitrise Cache
@@ -55,6 +55,21 @@ workflows:
                 --build-arg "ALMA=CICA KUTYA"
                 --platform=linux/amd64
                 --label=com.example.version=0.0.1-beta
+
+  test_simple_build_with_push:
+    before_run:
+      - _start_mock_registry
+    after_run:
+      - _cleanup_mock_registry
+    steps:
+      - path::./:
+          title: Build a simple image - push to local registry
+          inputs:
+            - file: tests/Dockerfile.alpine
+            - push: "true"
+            - tags: localhost:5001/myimage:simple-build
+            - buildx_host_network: "true"
+
   _generate_api_token:
     steps:
     - script:
@@ -90,3 +105,22 @@ workflows:
               
               envman add --key BITRISE_GIT_BRANCH --value master
               envman add --key BITRISE_GIT_COMMIT --value 1234567890
+
+  _start_mock_registry:
+    steps:
+      - script:
+          title: setup mock registry
+          inputs:
+            - content: |-
+                docker pull registry:latest
+                docker run -d -p 5001:5000 --restart always --name registry registry
+                docker login localhost:5001 -u test -p test
+  _cleanup_mock_registry:
+    steps:
+      - script:
+          is_always_run: true
+          title: cleanup mock registry
+          inputs:
+            - content: |-
+                docker stop registry
+                docker rm registry

@@ -171,6 +171,15 @@ inputs:
         Add one extra option per line.
       is_required: false
 
+  - buildx_host_network: "false"
+    opts:
+      title: Enables to use the host network with the buildkit build container
+      summary: Enables to use the host network with the buildkit build container
+      is_required: true
+      value_options:
+        - "true"
+        - "false"
+
   - verbose: "false"
     opts:
       title: Verbose logging
