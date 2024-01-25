@@ -138,7 +138,9 @@ func (step DockerBuildPushStep) dockerBuild(input Input, imageName string) error
 }
 
 func (step DockerBuildPushStep) build(input Input, imageName string) error {
-	stdout := NewChannelWriter(256, step.logger)
+	stdout := NewLoggerWriter(step.logger)
+	defer stdout.Flush()
+
 	buildxCmd := step.commandFactory.Create("docker", []string{
 		"buildx",
 		"build",
@@ -163,7 +165,9 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 }
 
 func (step DockerBuildPushStep) initializeBuildkit() error {
-	stdout := NewChannelWriter(256, step.logger)
+	stdout := NewLoggerWriter(step.logger)
+	defer stdout.Flush()
+
 	createCmd := step.commandFactory.Create("docker", []string{
 		"buildx",
 		"create",
