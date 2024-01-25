@@ -61,11 +61,9 @@ type_tags:
 #   apt_get:
 #   - name: cmake
 
-
 toolkit:
   go:
     package_name: github.com/bitrise-steplib/bitrise-step-docker-build-push
-
 
 inputs:
   - tags:
@@ -78,7 +76,7 @@ inputs:
         Add one tag per line. Example: `myregistry.com/myimage:latest`
       is_required: true
 
-  - context: "."
+  - context: .
     opts:
       title: Build context path
       summary: Path to the build context to be used for the docker build
@@ -88,7 +86,7 @@ inputs:
         The path is relative to the working directory.
       is_required: true
 
-  - file: "./Dockerfile"
+  - file: ./Dockerfile
     opts:
       title: Dockerfile path
       summary: Path to the Dockerfile to be built
@@ -112,7 +110,7 @@ inputs:
   - use_bitrise_cache: "false"
     opts:
       title: Use Bitrise key-value cache
-      summary: When set to 'true', the docker image will automatically be cached using Bitrise key-value cache
+      summary: When set to 'true', image will be cached automatically with Bitrise key-value cache
       description: |-
         When set to 'true', the docker image will automatically be cached using Bitrise key-value cache.
         

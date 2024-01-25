@@ -1,0 +1,64 @@
+format_version: 4
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+app:
+  envs:
+    # Shared secrets for testing, use a .bitrise.secrets.yml file to define these locally
+  - BITRISEIO_CACHE_SERVICE_URL: $BITRISEIO_CACHE_SERVICE_URL
+  - CACHE_API_CLIENT_SECRET: $CACHE_API_CLIENT_SECRET
+
+workflows:
+  test_bitrise_cache:
+    before_run:
+    - _fake_github_envs
+    - _generate_api_token
+    steps:
+    - path::./:
+        title: Step Test
+        description: |-
+          The example input has a default value,
+          you can overwrite it if you want to, just like we did below,
+          but the step would use the default value specified in the `step.yml`
+          file if you would not specify another value.
+        inputs:
+        - context: .
+        - file: ./testData/Dockerfile
+        - tags: |-
+            myregistry.com/myimage:latest
+            myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
+        - use_bitrise_cache: "true"
+  _generate_api_token:
+    steps:
+    - script:
+        title: Generate API access token
+        description: Generate an expiring API token using $API_CLIENT_SECRET
+        inputs:
+        - content: |
+            #!/bin/env bash
+            set -e
+            
+            json_response=$(curl --fail -X POST https://auth.services.bitrise.io/auth/realms/bitrise-services/protocol/openid-connect/token -k \
+                --data "client_id=bitrise-steps" \
+                --data "client_secret=$CACHE_API_CLIENT_SECRET" \
+                --data "grant_type=urn:ietf:params:oauth:grant-type:uma-ticket" \
+                --data "claim_token=eyJhcHBfaWQiOlsiY2FjaGUtc3RlcHMtdGVzdHMiXSwgIm9yZ19pZCI6WyJ0ZXN0LW9yZy1pZCJdLCAiYWJjc19hY2Nlc3NfZ3JhbnRlZCI6WyJ0cnVlIl19" \
+                --data "claim_token_format=urn:ietf:params:oauth:token-type:jwt" \
+                --data "audience=bitrise-services")
+            
+            auth_token=$(echo $json_response | jq -r .access_token)
+            
+            envman add --key BITRISEIO_ABCS_API_URL --value $BITRISEIO_CACHE_SERVICE_URL
+            envman add --key BITRISEIO_BITRISE_SERVICES_ACCESS_TOKEN --value $auth_token --sensitive
+
+  _fake_github_envs:
+    steps:
+      - script:
+          title: Fake GitHub envs
+          description: Fake GitHub envs
+          inputs:
+          - content: |
+              #!/bin/bash
+              set -ex
+              
+              envman add --key BITRISE_GIT_BRANCH --value master
+              envman add --key BITRISE_GIT_COMMIT --value 1234567890
