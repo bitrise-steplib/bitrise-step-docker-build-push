@@ -2,6 +2,7 @@ package step
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/cache"
@@ -194,12 +195,20 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 		}
 	}
 
-	// Extra options must be in the format of --option=value
-	// Having a space between the option and the value will work only if there are no spaces in the value
-	// For example this will not work: --option "value with spaces", but this will: --option="value with spaces"
 	if input.ExtraOptions != "" {
 		for _, option := range strings.Split(input.ExtraOptions, "\n") {
-			args = append(args, option)
+			// This regex splits the string by spaces, but keeps quoted strings together
+			// Example --build-arg "-X main.version=1.0.0" will be split into --build-arg and "-X main.version=1.0.0"
+			r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+			result := r.FindAllString(option, -1)
+
+			// Remove quotes from the strings
+			var options []string
+			for _, result := range result {
+				options = append(options, strings.ReplaceAll(result, "\"", ""))
+			}
+
+			args = append(args, options...)
 		}
 	}
 

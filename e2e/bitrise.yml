@@ -52,9 +52,9 @@ workflows:
                 TEST=kutya
             - extra_options: |-
                 --target=build
-                --build-arg="ALMA=CICA KUTYA"
+                --build-arg "ALMA=CICA KUTYA"
                 --platform=linux/amd64
-                --label="com.example.version=0.0.1-beta"
+                --label=com.example.version=0.0.1-beta
   _generate_api_token:
     steps:
     - script:
