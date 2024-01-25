@@ -194,7 +194,10 @@ func (step DockerBuildPushStep) build(input Input, imageName string) error {
 		args = append(args, "--push")
 	}
 
-	args = append(args, []string{"-t", imageName, "-f", input.File, input.Context}...)
+	// The --load parameter is used to load the image into the local docker daemon
+	// This is needed because the docker buildx build command will keep the result in cache only,
+	// preventing the use of the image in the same build
+	args = append(args, []string{"--load", "-t", imageName, "-f", input.File, input.Context}...)
 
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))
 

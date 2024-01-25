@@ -8,25 +8,40 @@ app:
   - CACHE_API_CLIENT_SECRET: $CACHE_API_CLIENT_SECRET
 
 workflows:
+  test_simple_build:
+    before_run:
+      - _fake_github_envs
+      - _generate_api_token
+    steps:
+      - path::./:
+          title: Build a simple image - no cache
+          inputs:
+            - file: tests/Dockerfile.alpine
+            - tags: myregistry.com/myimage:simple-build
   test_bitrise_cache:
     before_run:
     - _fake_github_envs
     - _generate_api_token
     steps:
     - path::./:
-        title: Step Test
-        description: |-
-          The example input has a default value,
-          you can overwrite it if you want to, just like we did below,
-          but the step would use the default value specified in the `step.yml`
-          file if you would not specify another value.
+        title: Build image with Bitrise Cache
         inputs:
-        - context: .
-        - file: ./testData/Dockerfile
+        - file: tests/Dockerfile.alpine
         - tags: |-
-            myregistry.com/myimage:latest
+            myregistry.com/myimage:bitrise-cache
             myregistry.com/myimage:{{.Branch}}-{{.CommitHash}}
         - use_bitrise_cache: "true"
+  test_build_target:
+    before_run:
+      - _fake_github_envs
+      - _generate_api_token
+    steps:
+      - path::./:
+          title: Build image with Bitrise Cache
+          inputs:
+            - file: tests/Dockerfile.alpine
+            - tags: myregistry.com/myimage:build-target
+            - extra_options: --target=build
   _generate_api_token:
     steps:
     - script:
