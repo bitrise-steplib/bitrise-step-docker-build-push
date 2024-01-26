@@ -147,7 +147,10 @@ func (step DockerBuildPushStep) dockerBuild(input Input) error {
 	if err := step.build(input); err != nil {
 		return fmt.Errorf("build docker image: %w", err)
 	}
-	if err := step.moveCacheFolder(); err != nil {
+
+	// To make sure the cache is not growing indefinitely,
+	// we remove the original cache folder and move the new one to its place
+	if err := step.moveCacheFolder(dockerCacheFolderTemporary, dockerCacheFolder); err != nil {
 		return fmt.Errorf("move cache folder: %w", err)
 	}
 
@@ -273,14 +276,14 @@ func (step DockerBuildPushStep) createCacheFolder(path string) error {
 	return nil
 }
 
-func (step DockerBuildPushStep) moveCacheFolder() error {
-	cmd := step.commandFactory.Create("rm", []string{"-rf", dockerCacheFolder}, nil)
+func (step DockerBuildPushStep) moveCacheFolder(from string, to string) error {
+	cmd := step.commandFactory.Create("rm", []string{"-rf", to}, nil)
 	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return fmt.Errorf("remove cache folder %s: %w", out, err)
 	}
 
-	cmd = step.commandFactory.Create("mv", []string{dockerCacheFolderTemporary, dockerCacheFolder}, nil)
+	cmd = step.commandFactory.Create("mv", []string{from, to}, nil)
 	_, err = cmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return fmt.Errorf("move cache folder: %w", err)
