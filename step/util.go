@@ -1,16 +1,16 @@
 package step
 
-import (
-	"github.com/bitrise-io/go-utils/v2/log"
-)
+type InfoLogger interface {
+	Infof(format string, v ...interface{})
+}
 
 // LogWriter can be used in place of an io.Writer where we want to redirect the output to a logger in real time
 type LogWriter struct {
 	buffer []byte
-	logger log.Logger
+	logger InfoLogger
 }
 
-func NewLoggerWriter(logger log.Logger) *LogWriter {
+func NewLoggerWriter(logger InfoLogger) *LogWriter {
 	return &LogWriter{
 		logger: logger,
 	}
@@ -18,7 +18,7 @@ func NewLoggerWriter(logger log.Logger) *LogWriter {
 
 func (lw *LogWriter) Write(p []byte) (n int, err error) {
 	for index := range p {
-		if (p[index] == '\n' || p[index] == '\r') && len(lw.buffer) > 0 {
+		if p[index] == '\n' || p[index] == '\r' {
 			lw.logger.Infof(string(lw.buffer))
 			lw.buffer = nil
 		} else {
