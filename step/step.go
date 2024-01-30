@@ -106,7 +106,7 @@ func (step DockerBuildPushStep) restoreCache(input Input, imageName string) erro
 	}
 
 	return saver.Restore(cache.RestoreCacheInput{
-		StepId:  "restore-cache",
+		StepId:  "docker-build-push",
 		Verbose: input.Verbose,
 		Keys:    cacheKey,
 	})
@@ -117,7 +117,7 @@ func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 	saver := cache.NewSaver(step.envRepo, step.logger, step.pathProvider, step.pathModifier, step.pathChecker)
 
 	return saver.Save(cache.SaveCacheInput{
-		StepId:      "save-cache",
+		StepId:      "docker-build-push",
 		Verbose:     input.Verbose,
 		Key:         fmt.Sprintf(dockerCacheKeyTemplate, imageName),
 		Paths:       []string{dockerCacheFolder},
@@ -171,9 +171,6 @@ func (step DockerBuildPushStep) destroyContainer(container string) error {
 }
 
 func (step DockerBuildPushStep) build(input Input) error {
-	stdout := NewLoggerWriter(step.logger)
-	defer stdout.Flush()
-
 	args := []string{
 		"buildx",
 		"build",
@@ -235,8 +232,8 @@ func (step DockerBuildPushStep) build(input Input) error {
 	step.logger.Infof("$ docker %s", strings.Join(args, " "))
 
 	buildxCmd := step.commandFactory.Create("docker", args, &command.Opts{
-		Stdout: stdout,
-		Stderr: stdout,
+		Stdout: os.Stdout,
+		Stderr: os.Stdout,
 	})
 
 	err := buildxCmd.Run()
