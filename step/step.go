@@ -2,6 +2,7 @@ package step
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -267,24 +268,21 @@ func (step DockerBuildPushStep) initializeBuildkit(input Input) (string, error) 
 }
 
 func (step DockerBuildPushStep) createCacheFolder(path string) error {
-	cmd := step.commandFactory.Create("mkdir", []string{"-p", path}, nil)
-	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	err := os.MkdirAll(path, 0755)
 	if err != nil {
-		return fmt.Errorf("create cache folder %s: %w", out, err)
+		return fmt.Errorf("create cache folder %w", err)
 	}
 
 	return nil
 }
 
 func (step DockerBuildPushStep) moveCacheFolder(from string, to string) error {
-	cmd := step.commandFactory.Create("rm", []string{"-rf", to}, nil)
-	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	err := os.RemoveAll(to)
 	if err != nil {
-		return fmt.Errorf("remove cache folder %s: %w", out, err)
+		return fmt.Errorf("remove cache folder %w", err)
 	}
 
-	cmd = step.commandFactory.Create("mv", []string{from, to}, nil)
-	_, err = cmd.RunAndReturnTrimmedCombinedOutput()
+	err = os.Rename(from, to)
 	if err != nil {
 		return fmt.Errorf("move cache folder: %w", err)
 	}
