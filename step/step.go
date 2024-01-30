@@ -43,6 +43,7 @@ const (
 	dockerCacheKeyTemplate     = "docker-%s-{{ .OS }}-{{ .Arch }}-{{ .Branch }}-{{ .CommitHash }}"
 	dockerCacheFolder          = "/tmp/.buildx-cache"
 	dockerCacheFolderTemporary = "/tmp/.buildx-cache-new"
+	stepId                     = "docker-build-push"
 )
 
 func New(
@@ -97,7 +98,7 @@ func (step DockerBuildPushStep) Run() error {
 
 func (step DockerBuildPushStep) restoreCache(input Input, imageName string) error {
 	step.logger.Infof("Restoring cache...")
-	saver := cache.NewRestorer(step.envRepo, step.logger, step.commandFactory)
+	restorer := cache.NewRestorer(step.envRepo, step.logger, step.commandFactory)
 
 	var cacheKey = []string{
 		fmt.Sprintf(dockerCacheKeyTemplate, imageName),
@@ -105,8 +106,8 @@ func (step DockerBuildPushStep) restoreCache(input Input, imageName string) erro
 		fmt.Sprintf("docker-%s-{{ .OS }}-{{ .Arch }}", imageName),
 	}
 
-	return saver.Restore(cache.RestoreCacheInput{
-		StepId:  "docker-build-push",
+	return restorer.Restore(cache.RestoreCacheInput{
+		StepId:  stepId,
 		Verbose: input.Verbose,
 		Keys:    cacheKey,
 	})
@@ -117,7 +118,7 @@ func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 	saver := cache.NewSaver(step.envRepo, step.logger, step.pathProvider, step.pathModifier, step.pathChecker)
 
 	return saver.Save(cache.SaveCacheInput{
-		StepId:      "docker-build-push",
+		StepId:      stepId,
 		Verbose:     input.Verbose,
 		Key:         fmt.Sprintf(dockerCacheKeyTemplate, imageName),
 		Paths:       []string{dockerCacheFolder},
@@ -259,7 +260,7 @@ func (step DockerBuildPushStep) initializeBuildkit(input Input) (string, error) 
 
 	out, err := createCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("create buildx instance: %w", err)
+		return "", fmt.Errorf("create buildx instance %s: %w", out, err)
 	}
 	return out, nil
 }

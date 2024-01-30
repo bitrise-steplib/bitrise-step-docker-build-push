@@ -79,7 +79,7 @@ inputs:
 - build_arg:
   opts:
     title: Build arguments
-    summary: List of build arguments to be passed to the docker build
+    summary: List of [build arguments](https://docs.docker.com/build/guide/build-args/) to be passed to the docker build
     description: |-
       List of build arguments to be passed to the docker build
 
