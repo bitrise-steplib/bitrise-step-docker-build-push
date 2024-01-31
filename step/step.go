@@ -76,10 +76,16 @@ func (step DockerBuildPushStep) Run() error {
 
 	step.logger.EnableDebugLog(input.Verbose)
 
-	tagUsedInCacheKey := strings.Split(input.Tags, "\n")[0]
+	imageName := strings.Split(input.Tags, "\n")[0]
+
+	// We need to remove the image tag as it might change between builds
+	// which would result in a constant cache miss due to the prefix match failing everytime
+	if strings.Contains(imageName, ":") {
+		imageName = strings.Split(imageName, ":")[0]
+	}
 
 	if input.UseBitriseCache {
-		if err := step.restoreCache(input, tagUsedInCacheKey); err != nil {
+		if err := step.restoreCache(input, imageName); err != nil {
 			return fmt.Errorf("restore cache: %w", err)
 		}
 	}
@@ -89,7 +95,7 @@ func (step DockerBuildPushStep) Run() error {
 	}
 
 	if input.UseBitriseCache {
-		if err := step.saveCache(input, tagUsedInCacheKey); err != nil {
+		if err := step.saveCache(input, imageName); err != nil {
 			return fmt.Errorf("save cache: %w", err)
 		}
 	}
