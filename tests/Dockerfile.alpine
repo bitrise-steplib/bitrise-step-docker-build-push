@@ -1,0 +1,4 @@
+FROM alpine:latest as build
+
+ARG VERSION=0.0.0
+ARG TEST=cica
