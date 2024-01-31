@@ -199,18 +199,8 @@ func (step DockerBuildPushStep) build(input Input) error {
 	}
 
 	if input.ExtraOptions != "" {
-		for _, option := range strings.Split(input.ExtraOptions, "\n") {
-			// This regex splits the string by spaces, but keeps quoted strings together
-			// Example --build-arg "-X main.version=1.0.0" will be split into --build-arg and "-X main.version=1.0.0"
-			r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
-			result := r.FindAllString(option, -1)
-
-			// Remove quotes from the strings
-			var options []string
-			for _, result := range result {
-				options = append(options, strings.ReplaceAll(result, "\"", ""))
-			}
-
+		options := ParseExtraOptions(input.ExtraOptions)
+		if len(options) > 0 {
 			args = append(args, options...)
 		}
 	}
@@ -286,4 +276,20 @@ func (step DockerBuildPushStep) moveCacheFolder(from string, to string) error {
 	}
 
 	return nil
+}
+
+func ParseExtraOptions(options string) []string {
+	var optionArgs []string
+	for _, option := range strings.Split(options, "\n") {
+		// This regex splits the string by spaces, but keeps quoted strings together
+		// Example --build-arg "-X main.version=1.0.0" will be split into --build-arg and "-X main.version=1.0.0"
+		r := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+		result := r.FindAllString(option, -1)
+
+		for _, result := range result {
+			optionArgs = append(optionArgs, strings.ReplaceAll(result, "\"", ""))
+		}
+	}
+
+	return optionArgs
 }
