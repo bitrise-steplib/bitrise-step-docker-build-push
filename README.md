@@ -1,93 +1,55 @@
-# docker-build-push
+# Docker Build & Push
+
+[![Step changelog](https://shields.io/github/v/release/bitrise-steplib/bitrise-step-docker-build-push?include_prereleases&label=changelog&color=blueviolet)](https://github.com/bitrise-steplib/bitrise-step-docker-build-push/releases)
 
 Building and pushing docker images with built-in cache support
 
 
-## How to use this Step
+<details>
+<summary>Description</summary>
 
-Can be run directly with the [bitrise CLI](https://github.com/bitrise-io/bitrise),
-just `git clone` this repository, `cd` into it's folder in your Terminal/Command Line
-and call `bitrise run test`.
+Enables you to build and optionally push docker images with built-in Bitrise key-value cache support.
+It is possible to customize the docker build command to utilize other cache mechanisms, such as registry-cache.
 
-*Check the `bitrise.yml` file for required inputs which have to be
-added to your `.bitrise.secrets.yml` file!*
+</details>
 
-Step by step:
+## 🧩 Get started
 
-1. Open up your Terminal / Command Line
-2. `git clone` the repository
-3. `cd` into the directory of the step (the one you just `git clone`d)
-5. Create a `.bitrise.secrets.yml` file in the same directory of `bitrise.yml`
-   (the `.bitrise.secrets.yml` is a git ignored file, you can store your secrets in it)
-6. Check the `bitrise.yml` file for any secret you should set in `.bitrise.secrets.yml`
-  * Best practice is to mark these options with something like `# define these in your .bitrise.secrets.yml`, in the `app:envs` section.
-7. Once you have all the required secret parameters in your `.bitrise.secrets.yml` you can just run this step with the [bitrise CLI](https://github.com/bitrise-io/bitrise): `bitrise run test`
+Add this step directly to your workflow in the [Bitrise Workflow Editor](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/steps/adding-steps-to-a-workflow.html).
 
-An example `.bitrise.secrets.yml` file:
+You can also run this step directly with [Bitrise CLI](https://github.com/bitrise-io/bitrise).
 
-```
-envs:
-- A_SECRET_PARAM_ONE: the value for secret one
-- A_SECRET_PARAM_TWO: the value for secret two
-```
+## ⚙️ Configuration
 
-## How to create your own step
+<details>
+<summary>Inputs</summary>
 
-1. Create a new git repository for your step (**don't fork** the *step template*, create a *new* repository)
-2. Copy the [step template](https://github.com/bitrise-steplib/step-template) files into your repository
-3. Fill the `step.sh` with your functionality
-4. Wire out your inputs to `step.yml` (`inputs` section)
-5. Fill out the other parts of the `step.yml` too
-6. Provide test values for the inputs in the `bitrise.yml`
-7. Run your step with `bitrise run test` - if it works, you're ready
+| Key | Description | Flags | Default |
+| --- | --- | --- | --- |
+| `tags` | List of tags (full image names) to be applied to the built image  Add one tag per line. Example: `myregistry.com/myimage:latest` | required |  |
+| `context` | Path to the build context to be used for the docker build  The path is relative to the working directory. | required | `.` |
+| `file` | Path to the Dockerfile to be built  The path is relative to the working directory. | required | `./Dockerfile` |
+| `push` | When set to 'true', the docker image will be pushed. | required | `false` |
+| `use_bitrise_cache` | When set to 'true', the docker image will automatically be cached using Bitrise key-value cache.  The following cache keys will be used: - docker-imagename-{{ .OS }}-{{ .Arch }}-{{ .Branch }}-{{ .CommitHash }} - docker-imagename-{{ .OS }}-{{ .Arch }}-{{ .Branch }} - docker-imagename-{{ .OS }}-{{ .Arch }}  Warning: Do not specify the cache-to and cache-from parameters when using this option. | required | `false` |
+| `build_arg` | List of build arguments to be passed to the docker build  Add one build argument per line. Example: `MY_BUILD_ARG=myvalue` |  |  |
+| `cache_from` | List of arguments to be passed to the docker build for cache-from  Add one cache-from argument per line. Example: `type=registry,ref=myregistry.dev/myrepository/my-image:latest` |  |  |
+| `cache_to` | List of arguments to be passed to the docker build for cache-to  Add one cache-to argument per line. Example: `type=registry,ref=myregistry.dev/myrepository/my-image:latest,mode=max,compression=zstd` |  |  |
+| `extra_options` | List of extra options to be passed to the docker build  Extra options must be in the format of `--option value` or `--option=value`.  Warning:   When using values with quotes in them (for example when they contain spaces) do not use the equal sign.   Separate it with spaces instead. Example: `--option "value with spaces"`  Add one extra option per line. |  |  |
+| `buildx_host_network` | Enables to use the host network with the buildkit build container | required | `false` |
+| `verbose` | Enable logging additional information for troubleshooting | required | `false` |
+</details>
 
-__For Step development guidelines & best practices__ check this documentation: [https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md](https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md).
+<details>
+<summary>Outputs</summary>
+There are no outputs defined in this step
+</details>
 
-**NOTE:**
+## 🙋 Contributing
 
-If you want to use your step in your project's `bitrise.yml`:
+We welcome [pull requests](https://github.com/bitrise-steplib/bitrise-step-docker-build-push/pulls) and [issues](https://github.com/bitrise-steplib/bitrise-step-docker-build-push/issues) against this repository.
 
-1. git push the step into it's repository
-2. reference it in your `bitrise.yml` with the `git::PUBLIC-GIT-CLONE-URL@BRANCH` step reference style:
+For pull requests, work on your changes in a forked repository and use the Bitrise CLI to [run step tests locally](https://docs.bitrise.io/en/bitrise-ci/bitrise-cli/running-your-first-local-build-with-the-cli.html).
 
-```
-- git::https://github.com/user/my-step.git@branch:
-   title: My step
-   inputs:
-   - my_input_1: "my value 1"
-   - my_input_2: "my value 2"
-```
+Learn more about developing steps:
 
-You can find more examples of step reference styles
-in the [bitrise CLI repository](https://github.com/bitrise-io/bitrise/blob/master/_examples/tutorials/steps-and-workflows/bitrise.yml#L65).
-
-## How to contribute to this Step
-
-1. Fork this repository
-2. `git clone` it
-3. Create a branch you'll work on
-4. To use/test the step just follow the **How to use this Step** section
-5. Do the changes you want to
-6. Run/test the step before sending your contribution
-  * You can also test the step in your `bitrise` project, either on your Mac or on [bitrise.io](https://www.bitrise.io)
-  * You just have to replace the step ID in your project's `bitrise.yml` with either a relative path, or with a git URL format
-  * (relative) path format: instead of `- original-step-id:` use `- path::./relative/path/of/script/on/your/Mac:`
-  * direct git URL format: instead of `- original-step-id:` use `- git::https://github.com/user/step.git@branch:`
-  * You can find more example of alternative step referencing at: https://github.com/bitrise-io/bitrise/blob/master/_examples/tutorials/steps-and-workflows/bitrise.yml
-7. Once you're done just commit your changes & create a Pull Request
-
-
-## Share your own Step
-
-You can share your Step or step version with the [bitrise CLI](https://github.com/bitrise-io/bitrise). If you use the `bitrise.yml` included in this repository, all you have to do is:
-
-1. In your Terminal / Command Line `cd` into this directory (where the `bitrise.yml` of the step is located)
-1. Run: `bitrise run test` to test the step
-1. Run: `bitrise run audit-this-step` to audit the `step.yml`
-1. Check the `share-this-step` workflow in the `bitrise.yml`, and fill out the
-   `envs` if you haven't done so already (don't forget to bump the version number if this is an update
-   of your step!)
-1. Then run: `bitrise run share-this-step` to share the step (version) you specified in the `envs`
-1. Send the Pull Request, as described in the logs of `bitrise run share-this-step`
-
-That's all ;)
+- [Create your own step](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/developing-your-own-bitrise-step/developing-a-new-step.html)
