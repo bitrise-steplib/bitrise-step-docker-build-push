@@ -104,7 +104,7 @@ func (step DockerBuildPushStep) Run() error {
 
 func (step DockerBuildPushStep) restoreCache(input Input, imageName string) error {
 	step.logger.Infof("Restoring cache...")
-	restorer := cache.NewRestorer(step.envRepo, step.logger, step.commandFactory)
+	restorer := cache.NewRestorer(step.envRepo, step.logger, step.commandFactory, nil)
 
 	var cacheKey = []string{
 		fmt.Sprintf(dockerCacheKeyTemplate, imageName),
@@ -121,7 +121,7 @@ func (step DockerBuildPushStep) restoreCache(input Input, imageName string) erro
 
 func (step DockerBuildPushStep) saveCache(input Input, imageName string) error {
 	step.logger.Infof("Saving cache...")
-	saver := cache.NewSaver(step.envRepo, step.logger, step.pathProvider, step.pathModifier, step.pathChecker)
+	saver := cache.NewSaver(step.envRepo, step.logger, step.pathProvider, step.pathModifier, step.pathChecker, nil)
 
 	return saver.Save(cache.SaveCacheInput{
 		StepId:      stepId,
