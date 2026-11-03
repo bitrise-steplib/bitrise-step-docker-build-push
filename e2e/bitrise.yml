@@ -7,19 +7,24 @@ app:
 
 workflows:
   test_simple_build:
+    before_run:
+    - _detect_docker
     steps:
     - path::./:
         title: Build a simple image - no cache
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         inputs:
         - file: tests/Dockerfile.alpine
         - tags: myregistry.com/myimage:simple-build
 
   test_with_bitrise_cache:
     before_run:
+    - _detect_docker
     - _fake_github_envs
     steps:
     - path::./:
         title: Build image with Bitrise Cache
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         inputs:
         - file: tests/Dockerfile.alpine
         - tags: |-
@@ -29,10 +34,12 @@ workflows:
 
   test_advanced_build:
     before_run:
+    - _detect_docker
     - _fake_github_envs
     steps:
     - path::./:
         title: Build image with Bitrise Cache
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         inputs:
         - file: tests/Dockerfile.alpine
         - tags: |-
@@ -55,17 +62,34 @@ workflows:
 
   test_simple_build_with_push:
     before_run:
+    - _detect_docker
     - _start_mock_registry
     after_run:
     - _cleanup_mock_registry
     steps:
     - path::./:
         title: Build a simple image - push to local registry
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         inputs:
         - file: tests/Dockerfile.alpine
         - push: "true"
         - tags: localhost:5001/myimage:simple-build
         - buildx_host_network: "true"
+
+  _detect_docker:
+    steps:
+    - script:
+        title: Detect docker binary
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -e
+            if command -v docker >/dev/null 2>&1; then
+              envman add --key HAS_DOCKER --value true
+            else
+              envman add --key HAS_DOCKER --value false
+              echo "docker binary not available on this stack; downstream build steps will be skipped"
+            fi
 
   _fake_github_envs:
     steps:
@@ -83,6 +107,7 @@ workflows:
   _start_mock_registry:
     steps:
     - script:
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         title: setup mock registry
         inputs:
         - content: |-
@@ -93,6 +118,7 @@ workflows:
     steps:
     - script:
         is_always_run: true
+        run_if: '{{enveq "HAS_DOCKER" "true"}}'
         title: cleanup mock registry
         inputs:
         - content: |-
